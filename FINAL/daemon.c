@@ -19,7 +19,7 @@ int sleep_interval = 300;
 
 void sigusr1Handler(int signum) {
     if (signum == SIGUSR1) {
-        syslog(LOG_INFO,"Daemon awakened by SIGUSR1");
+        syslog(LOG_INFO,"SIGUSR1 received!");
         awake = 1;
     }
 }
