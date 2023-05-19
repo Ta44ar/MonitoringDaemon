@@ -13,6 +13,8 @@
 
 #include "fileoperations.h"
 
+int recursive = 0;
+
 struct FileEntry *createFileEntry(const char *name, const char *path, enum FileType type) {
     struct FileEntry *entry = (struct FileEntry *) malloc(sizeof(struct FileEntry));
     strncpy(entry->name, name, sizeof(entry->name));

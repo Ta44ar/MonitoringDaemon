@@ -16,20 +16,6 @@
 volatile sig_atomic_t awake = 0;
 volatile sig_atomic_t termination = 0;
 int sleep_interval = 300;
-int recursive = 0;
-
-enum FileType {
-    FILE_TYPE,
-    DIRECTORY_TYPE
-};
-
-struct FileEntry {
-    char name[256];
-    char path[1024];
-    unsigned char md5sum[MD5_DIGEST_LENGTH];
-    enum FileType type;
-    struct FileEntry *next;
-};
 
 void sigusr1Handler(int signum) {
     if (signum == SIGUSR1) {
@@ -49,7 +35,7 @@ int main(int argc, char *argv[]) {
 
     //Managing wrong program usage or help request
     if (argc == 2 && strcmp(argv[1], "--help") == 0) {
-        printf("Program usage: ./demon <source_path> <destination_path> [options]\n");
+        printf("Program usage: ./daemon <source_path> <destination_path> [options]\n");
         printf("Available options:\n\n");
         printf(" -t <number>: Sets new sleep interval for Daemon [seconds] (300sec by default).\n\n");
         printf(" -R: Recursive synchronization of subdirectiories included.\n\n");
@@ -58,8 +44,8 @@ int main(int argc, char *argv[]) {
         //printf("               Bazowy próg wynosi 512 megabajtów.\n");
         exit(EXIT_FAILURE);
     } else if (argc < 3) {
-        printf("Program usage: ./demon <source_path> <destination_path> [options]\n");
-        printf("Check available options by: ./demon --help.\n");
+        printf("Program usage: ./daemon <source_path> <destination_path> [options]\n");
+        printf("Check available options by: ./daemon --help.\n");
         exit(EXIT_FAILURE);
     }
 
