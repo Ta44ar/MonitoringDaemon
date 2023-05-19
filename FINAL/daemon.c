@@ -9,7 +9,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <signal.h>
-#include <openssl/md5.h>
+#include <openssl/evp.h>
 
 #include "fileoperations.h"
 
