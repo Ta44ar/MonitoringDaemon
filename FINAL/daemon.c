@@ -26,7 +26,7 @@ void sigusr1Handler(int signum) {
 
 void sigtermHandler(int signum) {
     if (signum == SIGTERM) {
-        syslog(LOG_INFO,"Daemon terminated by SIGTERM");
+        syslog(LOG_INFO,"Daemon terminated by SIGTERM.");
         termination = 1;
     }
 }
