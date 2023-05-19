@@ -9,7 +9,7 @@
 #include <string.h>
 #include <dirent.h>
 #include <signal.h>
-#include <openssl/md5.h>
+#include <openssl/evp.h>
 
 #include "fileoperations.h"
 
@@ -43,16 +43,19 @@ void calculateMD5(const char *filePath, unsigned char *md5sum) {
         return;
     }
 
-    MD5_CTX context;
-    MD5_Init(&context);
+    EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
+    EVP_DigestInit_ex(mdctx, EVP_md5(), NULL);
 
     unsigned char buffer[1024];
     int bytesRead;
     while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) != 0) {
-        MD5_Update(&context, buffer, bytesRead);
+        EVP_DigestUpdate(mdctx, buffer, bytesRead);
     }
 
-    MD5_Final(md5sum, &context);
+    unsigned int digestLength;
+    EVP_DigestFinal_ex(mdctx, md5sum, &digestLength);
+
+    EVP_MD_CTX_free(mdctx);
 
     fclose(file);
 }
