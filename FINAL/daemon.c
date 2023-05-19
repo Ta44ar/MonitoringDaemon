@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
 //                printf("Usunięto plik %s \n", current->name);
                 syslog(LOG_INFO, "DELETED FILE");
             } else if (current->type == FILE_TYPE) {
-                unsigned char temp_md5sum[MD5_DIGEST_LENGTH];
+                unsigned char temp_md5sum[EVP_MAX_MD_SIZE];
                 calculateMD5(current->path, temp_md5sum);
                 if (!compareHashes(current->md5sum, temp_md5sum)) {
 //                    printf("Plik %s został zmodyfikowany\n", current->name);

@@ -11,7 +11,7 @@ enum FileType {
 struct FileEntry {
     char name[256];
     char path[1024];
-    unsigned char md5sum[MD5_DIGEST_LENGTH];
+    unsigned char md5sum[EVP_MAX_MD_SIZE];
     enum FileType type;
     struct FileEntry *next;
 };

@@ -61,7 +61,7 @@ void calculateMD5(const char *filePath, unsigned char *md5sum) {
 }
 
 int compareHashes(const unsigned char *hash1, const unsigned char *hash2) {
-    for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
+    for (int i = 0; i < EVP_MAX_MD_SIZE; i++) {
         if (hash1[i] != hash2[i]) {
             return 0;
         }
