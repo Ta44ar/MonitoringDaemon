@@ -34,9 +34,10 @@ char* absoluteToRelative(const char* absolutePath, const char* currentFolder);
 
 void getDestinationFilePath(char* temp_path, char* destination_path, char* current_path, char* source_path);
 
-void createDirectories(char* path);
+void createDirectories(char* path, int delete_file_from_path);
 
 void copyFile(char* copyFromPath, char* copyToPath);
+
 
 #endif
 

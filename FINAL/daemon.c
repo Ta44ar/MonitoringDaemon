@@ -83,8 +83,10 @@ int main(int argc, char *argv[]) {
     strcpy(source_path, argv[1]);
     strcpy(destination_path, argv[2]);
 
-    strcat(source_path, "/");
-    strcat(destination_path, "/");
+    if (!source_path[strlen(source_path-1)] == 47)
+        strcat(source_path, "/");
+    if (!destination_path[strlen(destination_path-1)] == 47)
+        strcat(destination_path, "/");
 
     struct stat source_stat, destination_stat;
 
@@ -200,9 +202,16 @@ int main(int argc, char *argv[]) {
                 calculateMD5(currentStateOfDirCurrent->path, currentStateOfDirCurrent->md5sum);
             }
             if(!isElementInLinkedList(currentStateOfDirCurrent, head)){
-                syslog(LOG_INFO, "NEW FILE");
-                getDestinationFilePath(temp_path, destination_path, currentStateOfDirCurrent->path, source_path);
-                copyFile(currentStateOfDirCurrent->path, temp_path);
+                if(currentStateOfDirCurrent->type == FILE_TYPE){
+                    syslog(LOG_INFO, "NEW FILE");
+                    getDestinationFilePath(temp_path, destination_path, currentStateOfDirCurrent->path, source_path);
+                    copyFile(currentStateOfDirCurrent->path, temp_path);
+                }
+                else if(currentStateOfDirCurrent->type == DIRECTORY_TYPE){
+                    syslog(LOG_INFO, "NEW DIRECTORY");
+                    getDestinationFilePath(temp_path, destination_path, currentStateOfDirCurrent->path, source_path);
+                    createDirectories(temp_path, 0);
+                }
             }
                 
             currentStateOfDirCurrent = currentStateOfDirCurrent->next;

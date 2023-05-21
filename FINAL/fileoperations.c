@@ -10,6 +10,7 @@
 #include <dirent.h>
 #include <signal.h>
 #include <openssl/md5.h>
+#include <libgen.h>
 
 #include "fileoperations.h"
 
@@ -79,7 +80,12 @@ void traverseDirectory(const char *path, struct FileEntry **head) {
             continue;
 
         char filePath[1024];
-        snprintf(filePath, sizeof(filePath), "%s/%s", path, entry->d_name);
+        if (path[strlen(path) - 1] == 47){
+            snprintf(filePath, sizeof(filePath), "%s%s", path, entry->d_name);
+        }
+        else{
+            snprintf(filePath, sizeof(filePath), "%s/%s", path, entry->d_name);
+        }
 
         if (entry->d_type == DT_DIR) {
             struct FileEntry *newEntry = createFileEntry(entry->d_name, filePath, DIRECTORY_TYPE);
@@ -159,8 +165,33 @@ void getDestinationFilePath(char* temp_path, char* destination_path, char* curre
 
     temp_path[0] = '\0';
     strcat(temp_path, destination_path);
-    temp_path[strlen(temp_path)-1] = '\0';
     strcat(temp_path, absoluteToRelative(current_path, source_path));
+}
+
+void createDirectories(char* path, int delete_file_from_path) {
+    char* pathCopy = strdup(path);  // Kopiujemy ścieżkę do osobnej zmiennej, aby nie modyfikować oryginalnej
+    if(delete_file_from_path) pathCopy = dirname(pathCopy);
+    char* token = strtok(pathCopy, "/");  // Rozdzielamy ścieżkę na poszczególne katalogi
+    
+    char currentPath[256] = "";  // Inicjalizujemy pusty aktualny katalog
+    
+    while (token != NULL) {
+        // Dodajemy kolejny katalog do aktualnej ścieżki
+        strcat(currentPath, token);
+        strcat(currentPath, "/");
+        
+        // Tworzymy katalog, jeśli nie istnieje
+        struct stat st;
+        if (stat(currentPath, &st) == -1) {
+            mkdir(currentPath, 0700);  // Uprawnienia dla nowo utworzonego katalogu
+            syslog(LOG_INFO, "NEW DIRECTORY SUCCESSFULLY CREATED");
+
+        }
+        
+        token = strtok(NULL, "/");  // Przechodzimy do następnego katalogu
+    }
+    
+    free(pathCopy);  // Zwolnienie pamięci
 }
 
 void copyFile(char* copyFromPath, char* copyToPath){
@@ -171,6 +202,7 @@ void copyFile(char* copyFromPath, char* copyToPath){
                   exit(EXIT_FAILURE);
                 }
                 
+                createDirectories(copyToPath, 1);
                 int destination_fd = open(copyToPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
                 if (destination_fd == -1) {
                   perror("Error opening destination file");
