@@ -30,6 +30,14 @@ void freeLinkedList(struct FileEntry *head);
 
 int isElementInLinkedList(struct FileEntry* element, struct FileEntry* head);
 
+char* absoluteToRelative(const char* absolutePath, const char* currentFolder);
+
+void getDestinationFilePath(char* temp_path, char* destination_path, char* current_path, char* source_path);
+
+void createDirectories(char* path);
+
+void copyFile(char* copyFromPath, char* copyToPath);
+
 #endif
 
 
