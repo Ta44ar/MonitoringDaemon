@@ -82,7 +82,8 @@ int main(int argc, char *argv[]) {
 
     strcpy(source_path, argv[1]);
     strcpy(destination_path, argv[2]);
-
+    
+    //If user did not add a slash to path, do it
     if (!source_path[strlen(source_path-1)] == 47)
         strcat(source_path, "/");
     if (!destination_path[strlen(destination_path-1)] == 47)
