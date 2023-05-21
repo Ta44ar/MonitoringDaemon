@@ -170,7 +170,8 @@ void getDestinationFilePath(char* temp_path, char* destination_path, char* curre
 
 void createDirectories(char* path, int delete_file_from_path) {
     char* pathCopy = strdup(path);  // Kopiujemy ścieżkę do osobnej zmiennej, aby nie modyfikować oryginalnej
-    if(delete_file_from_path) pathCopy = dirname(pathCopy);
+    if(delete_file_from_path) 
+        pathCopy = dirname(pathCopy);
     char* token = strtok(pathCopy, "/");  // Rozdzielamy ścieżkę na poszczególne katalogi
     
     char currentPath[256] = "";  // Inicjalizujemy pusty aktualny katalog
