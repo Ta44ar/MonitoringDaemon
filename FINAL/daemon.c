@@ -176,6 +176,8 @@ int main(int argc, char *argv[]) {
                 getDestinationFilePath(temp_path, destination_path, current->path, source_path);
                 if (remove(temp_path) == 0) {
                     syslog(LOG_INFO, "File %s removed successfully from destination folder.", temp_path);
+                    // Zwolnienie pamięci dla relativePath
+                    free(relativePath);
                 } else {
                     perror("Error removing file");
                 }
@@ -186,6 +188,8 @@ int main(int argc, char *argv[]) {
                     syslog(LOG_INFO, "MODIFIED FILE");
                     getDestinationFilePath(temp_path, destination_path, current->path, source_path);
                     copyFile(current->path, temp_path);
+                    // Zwolnienie pamięci dla relativePath
+                    free(relativePath);
                 }
             }
             current = current->next;
@@ -203,6 +207,8 @@ int main(int argc, char *argv[]) {
                 syslog(LOG_INFO, "NEW FILE");
                 getDestinationFilePath(temp_path, destination_path, currentStateOfDirCurrent->path, source_path);
                 copyFile(currentStateOfDirCurrent->path, temp_path);
+                // Zwolnienie pamięci dla relativePath
+                free(relativePath);
             }
                 
             currentStateOfDirCurrent = currentStateOfDirCurrent->next;
@@ -214,6 +220,10 @@ int main(int argc, char *argv[]) {
 
         awake = 0;
     }
+    
+    // Zwolnienie pamięci dla relativePath
+    free(relativePath);
+    
     exit(EXIT_SUCCESS);
 }
 
