@@ -9,13 +9,121 @@
 #include <string.h>
 #include <dirent.h>
 #include <signal.h>
-#include <openssl/evp.h>
+#include <openssl/md5.h>
 
 #include "fileoperations.h"
 
 volatile sig_atomic_t awake = 0;
 volatile sig_atomic_t termination = 0;
 int sleep_interval = 300;
+
+char* absoluteToRelative(const char* absolutePath, const char* currentFolder) {
+    // Sprawdzanie poprawności argumentów
+    if (absolutePath == NULL || currentFolder == NULL) {
+        return NULL;
+    }
+
+    // Obliczanie długości folderów
+    size_t absoluteLen = strlen(absolutePath);
+    size_t currentLen = strlen(currentFolder);
+
+    // Obliczanie różnicy między folderami
+    size_t i = 0;
+    while (i < absoluteLen && i < currentLen && absolutePath[i] == currentFolder[i]) {
+        i++;
+    }
+
+    // Liczenie liczby folderów w folderze bieżącym
+    size_t numDirs = 0;
+    for (; i < currentLen; i++) {
+        if (currentFolder[i] == '/') {
+            numDirs++;
+        }
+    }
+
+    // Tworzenie ścieżki względnej
+    size_t relativeLen = 3 * numDirs + absoluteLen - i + 1;  // 3 * numDirs dla "../" oraz 1 dla '\0'
+    char* relativePath = (char*)malloc(relativeLen * sizeof(char));
+    if (relativePath == NULL) {
+        return NULL;
+    }
+
+    strcpy(relativePath, "");
+    for (size_t j = 0; j < numDirs; j++) {
+        strcat(relativePath, "../");
+    }
+    strcat(relativePath, absolutePath + i);
+
+    return relativePath;
+}
+
+void getDestinationFilePath(char* temp_path, char* destination_path, char* current_path, char* source_path) {
+
+    temp_path[0] = '\0';
+    strcat(temp_path, destination_path);
+    temp_path[strlen(temp_path)-1] = '\0';
+    strcat(temp_path, absoluteToRelative(current_path, source_path));
+}
+
+void createDirectories(char* path) {
+    char* pathCopy = strdup(path);  // Kopiujemy ścieżkę do osobnej zmiennej, aby nie modyfikować oryginalnej
+    char* token = strtok(pathCopy, "/");  // Rozdzielamy ścieżkę na poszczególne katalogi
+    
+    char currentPath[256] = "";  // Inicjalizujemy pusty aktualny katalog
+    
+    while (token != NULL) {
+        // Dodajemy kolejny katalog do aktualnej ścieżki
+        strcat(currentPath, token);
+        strcat(currentPath, "/");
+        
+        // Tworzymy katalog, jeśli nie istnieje
+        struct stat st;
+        if (stat(currentPath, &st) == -1) {
+            mkdir(currentPath, 0700);  // Uprawnienia dla nowo utworzonego katalogu
+        }
+        
+        token = strtok(NULL, "/");  // Przechodzimy do następnego katalogu
+    }
+    
+    free(pathCopy);  // Zwolnienie pamięci
+}
+
+void copyFile(char* copyFromPath, char* copyToPath) {
+
+                int source_fd = open(copyFromPath, O_RDONLY);
+                if (source_fd == -1) {
+                  perror("Error opening source file");
+                  exit(EXIT_FAILURE);
+                }
+                syslog(LOG_INFO, "CREATE new DIR");
+                createDirectories(copyToPath);
+                int destination_fd = open(copyToPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                if (destination_fd == -1) {
+                  perror("Error opening destination file");
+                  close(source_fd);
+                  exit(EXIT_FAILURE);
+                }
+
+                off_t offset = 0;
+                struct stat source_stat;
+                if (fstat(source_fd, &source_stat) == -1) {
+                    perror("Error getting source file information");
+                    close(source_fd);
+                    close(destination_fd);
+                    exit(EXIT_FAILURE);
+                }
+
+                if (sendfile(destination_fd, source_fd, &offset, source_stat.st_size) == -1) {
+                    perror("Error copying file");
+                    close(source_fd);
+                    close(destination_fd);
+                    exit(EXIT_FAILURE);
+                }
+                syslog(LOG_INFO, "File copied successfully.");
+
+                close(source_fd);
+                close(destination_fd);
+}
 
 void sigusr1Handler(int signum) {
     if (signum == SIGUSR1) {
@@ -39,9 +147,6 @@ int main(int argc, char *argv[]) {
         printf("Available options:\n\n");
         printf(" -t <number>: Sets new sleep interval for Daemon [seconds] (300sec by default).\n\n");
         printf(" -R: Recursive synchronization of subdirectiories included.\n\n");
-        //printf("  -s <liczba>: Ustawia próg wielkości pliku (w megabajtach).\n");
-        //printf("               Gdy plik przekroczy próg, kopiowany jest poprzez mmap.\n");
-        //printf("               Bazowy próg wynosi 512 megabajtów.\n");
         exit(EXIT_FAILURE);
     } else if (argc < 3) {
         printf("Program usage: ./daemon <source_path> <destination_path> [options]\n");
@@ -60,8 +165,6 @@ int main(int argc, char *argv[]) {
                     case 'R': //set checking subdirectories on
                         recursive = 1;
                         break;
-                    //case 's': //set filesize needed to trigger mmap copying
-                        //filesize = atol(argv[i+1])*1024*1024;
                     default:
                         break;
                 }
@@ -83,6 +186,7 @@ int main(int argc, char *argv[]) {
 
     char source_path[512];
     char destination_path[512];
+    char temp_path[512];
 
     strcpy(source_path, argv[1]);
     strcpy(destination_path, argv[2]);
@@ -95,14 +199,12 @@ int main(int argc, char *argv[]) {
     //Check if source_path is a directory
     if (stat(source_path, &source_stat) == -1 || !S_ISDIR(source_stat.st_mode)) {
         syslog(LOG_ERR, "Invalid source directory: %s", source_path);
-        printf("Invalid source directory\n");
         exit(EXIT_FAILURE);
     }
 
     // Check if destination_path is a directory
     if (stat(destination_path, &destination_stat) == -1 || !S_ISDIR(destination_stat.st_mode)) {
         syslog(LOG_ERR, "Invalid destination directory: %s", destination_path);
-        printf("Invalid destination directory\n");
         exit(EXIT_FAILURE);
     }
 
@@ -178,14 +280,21 @@ int main(int argc, char *argv[]) {
         // - czy zmodyfikowano jakis plik
         while (current != NULL) {
             if (access(current->path, F_OK) != 0) {
-//                printf("Usunięto plik %s \n", current->name);
                 syslog(LOG_INFO, "DELETED FILE");
+                getDestinationFilePath(temp_path, destination_path, current->path, source_path);
+                if (remove(temp_path) == 0) {
+                    syslog(LOG_INFO, "File %s removed successfully from destination folder.", temp_path);
+                } else {
+                    perror("Error removing file");
+                }
             } else if (current->type == FILE_TYPE) {
-                unsigned char temp_md5sum[EVP_MAX_MD_SIZE];
+                unsigned char temp_md5sum[MD5_DIGEST_LENGTH];
                 calculateMD5(current->path, temp_md5sum);
                 if (!compareHashes(current->md5sum, temp_md5sum)) {
 //                    printf("Plik %s został zmodyfikowany\n", current->name);
                     syslog(LOG_INFO, "MODIFIED FILE");
+                    getDestinationFilePath(temp_path, destination_path, current->path, source_path);
+                    copyFile(current->path, temp_path);
                 }
             }
             current = current->next;
@@ -200,9 +309,11 @@ int main(int argc, char *argv[]) {
                 calculateMD5(currentStateOfDirCurrent->path, currentStateOfDirCurrent->md5sum);
             }
             if(!isElementInLinkedList(currentStateOfDirCurrent, head)){
-//                printf("Dodano plik %s \n", currentStateOfDirCurrent->name);
                 syslog(LOG_INFO, "NEW FILE");
+                getDestinationFilePath(temp_path, destination_path, currentStateOfDirCurrent->path, source_path);
+                copyFile(currentStateOfDirCurrent->path, temp_path);
             }
+                
             currentStateOfDirCurrent = currentStateOfDirCurrent->next;
         }
 
@@ -214,6 +325,4 @@ int main(int argc, char *argv[]) {
     }
     exit(EXIT_SUCCESS);
 }
-
-
 
